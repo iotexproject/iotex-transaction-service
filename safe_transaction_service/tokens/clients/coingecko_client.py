@@ -42,6 +42,8 @@ class CoingeckoClient:
             self.asset_platform = "kucoin-community-chain"
         elif network == EthereumNetwork.METIS:
             self.asset_platform = "metis-andromeda"
+        elif network == EthereumNetwork.IOTEX_NETWORK_MAINNET:
+            self.asset_platform = "iotex"
         else:
             self.asset_platform = "ethereum"
 
@@ -59,6 +61,7 @@ class CoingeckoClient:
             EthereumNetwork.FUSE_MAINNET,
             EthereumNetwork.KCC_MAINNET,
             EthereumNetwork.METIS,
+            EthereumNetwork.IOTEX_NETWORK_MAINNET,
         )
 
     def _do_request(self, url: str) -> Dict[str, Any]:
@@ -159,3 +162,6 @@ class CoingeckoClient:
 
     def get_metis_usd_price(self) -> float:
         return self.get_price("metis-token")
+
+    def get_iotex_usd_price(self) -> float:
+        return self.get_price("iotex")

@@ -273,8 +273,8 @@ class PriceService:
         ):
             return self.kucoin_client.get_celo_usd_price()
         elif self.ethereum_network in (
-            EthereumNetwork.IOTEX_IO,
-            EthereumNetwork.IOTEX_IO_TESTNET,
+            EthereumNetwork.IOTEX_NETWORK_MAINNET,
+            EthereumNetwork.IOTEX_NETWORK_TESTNET,
         ):
             return self.get_iotex_usd_price()
         else:

@@ -13,7 +13,7 @@ preload_app = False  # Load application code before the worker processes are for
 timeout = (
     60  # Worker will be restarted if it doesn't answer in more than configured seconds
 )
-worker_class = "gevent"
+worker_class = "sync"
 worker_connections = 2000
 
 

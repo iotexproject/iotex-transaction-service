@@ -2,13 +2,13 @@ name: build_image
 
 on:
   push:
-    branches: ["iotex-stg"]
+    branches: ["main"]
     tags: ["v*.*.*"]
 
 env:
   REGISTRY: ghcr.io
-  REPOSITORY_URI_WEB: iotex-project/safe-transaction-web
-  REPOSITORY_URI_NGINX: iotex-project/safe-transaction-nginx
+  REPOSITORY_URI_WEB: iotexproject/safe-transaction-web
+  REPOSITORY_URI_NGINX: iotexproject/safe-transaction-nginx
 
 jobs:
   build_docker_image:
@@ -59,7 +59,7 @@ jobs:
         with:
           platforms: linux/amd64
           context: .
-          file: ./Dockerfile
+          file: ./docker/web/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-web.outputs.tags }}
           labels: ${{ steps.meta-web.outputs.labels }}
@@ -77,7 +77,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
-          file: ./nginx.Dockerfile
+          file: ./docker/nginx/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-nginx.outputs.tags }}
           labels: ${{ steps.meta-nginx.outputs.labels }}

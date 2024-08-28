@@ -7,8 +7,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  REPOSITORY_URI_WEB: iotex-project/safe-transaction-web
-  REPOSITORY_URI_NGINX: iotex-project/safe-transaction-nginx
+  REPOSITORY_URI_WEB: iotexproject/safe-transaction-web
+  REPOSITORY_URI_NGINX: iotexproject/safe-transaction-nginx
 
 jobs:
   build_docker_image:

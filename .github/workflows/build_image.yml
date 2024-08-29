@@ -58,8 +58,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           platforms: linux/amd64
-          context: .
-          file: ./docker/web/Dockerfile
+          context: ./docker/web
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-web.outputs.tags }}
           labels: ${{ steps.meta-web.outputs.labels }}
@@ -75,9 +74,8 @@ jobs:
         id: build-and-push-nginx
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ./docker/nginx
           platforms: linux/amd64
-          file: ./docker/nginx/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-nginx.outputs.tags }}
           labels: ${{ steps.meta-nginx.outputs.labels }}

@@ -17,6 +17,7 @@ from ..models import (
     ModuleTransaction,
     MultisigConfirmation,
     MultisigTransaction,
+    ProxyFactory,
     SafeLastStatus,
     SafeMasterCopy,
     SafeStatus,
@@ -388,6 +389,22 @@ class IndexService:
             # Just process addresses provided
             # No issues on modifying the indexer as we should be provided with a new instance
             indexer.IGNORE_ADDRESSES_ON_LOG_FILTER = False
+            # L2 indexers (SafeEventsIndexer) rely on ProxyCreation events emitted
+            # by the proxy factory to populate setup InternalTx.to with the master copy
+            # (see SafeEventsIndexer._process_decoded_element's ProxyCreation branch).
+            # The factory emits at its own address, not the Safe's, so when callers
+            # narrow `addresses` to just Safe addresses the cross-emitter pickup
+            # is dropped and setup rows end up with to=NULL_ADDRESS, breaking
+            # downstream safe_tx_hash computation. Append factory addresses so the
+            # filter still includes them.
+            # See iotexproject/iotex-transaction-service#10.
+            from ..indexers.safe_events_indexer import SafeEventsIndexer
+
+            if isinstance(indexer, SafeEventsIndexer):
+                factory_addresses = list(
+                    ProxyFactory.objects.values_list("address", flat=True)
+                )
+                addresses = list(addresses) + factory_addresses
         else:
             addresses = list(
                 indexer.database_queryset.values_list("address", flat=True)

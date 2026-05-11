@@ -158,3 +158,53 @@ class TestIndexService(EthereumTestCaseMixin, TestCase):
         self.assertEqual(SafeStatus.objects.count(), 0)
         self.assertEqual(SafeLastStatus.objects.count(), 0)
         self.assertEqual(MultisigTransaction.objects.count(), 2)
+
+    def test_is_unrelated_proxy_creation(self):
+        """ProxyCreation events for proxies not in the requested address set
+        are flagged as unrelated, so `_reindex` can drop them when the user
+        scoped `--addresses` to a specific Safe (see #10).
+        """
+        from ..services.index_service import _is_unrelated_proxy_creation
+
+        requested_address = Account.create().address
+        unrelated_address = Account.create().address
+        requested = {requested_address.lower()}
+
+        class _FakeIndexer:
+            def __init__(self, decoded):
+                self._decoded = decoded
+
+            def decode_element(self, log_receipt):
+                return self._decoded
+
+        # ProxyCreation for the requested Safe — should NOT be filtered.
+        related_indexer = _FakeIndexer(
+            {"event": "ProxyCreation", "args": {"proxy": requested_address}}
+        )
+        self.assertFalse(
+            _is_unrelated_proxy_creation(related_indexer, {}, requested)
+        )
+
+        # ProxyCreation for an unrelated Safe — should be filtered.
+        unrelated_indexer = _FakeIndexer(
+            {"event": "ProxyCreation", "args": {"proxy": unrelated_address}}
+        )
+        self.assertTrue(
+            _is_unrelated_proxy_creation(unrelated_indexer, {}, requested)
+        )
+
+        # Non-ProxyCreation event (e.g. SafeSetup) — never filtered, regardless
+        # of which address it concerns. Other indexer logic handles those.
+        safesetup_indexer = _FakeIndexer(
+            {"event": "SafeSetup", "args": {"singleton": unrelated_address}}
+        )
+        self.assertFalse(
+            _is_unrelated_proxy_creation(safesetup_indexer, {}, requested)
+        )
+
+        # Decoder returned None — leave the log in (don't drop logs we can't
+        # interpret).
+        undecodable_indexer = _FakeIndexer(None)
+        self.assertFalse(
+            _is_unrelated_proxy_creation(undecodable_indexer, {}, requested)
+        )

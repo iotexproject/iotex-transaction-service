@@ -17,6 +17,7 @@ from ..services import IndexServiceProvider
 from ..tasks import logger as task_logger
 from .factories import (
     MultisigTransactionFactory,
+    ProxyFactoryFactory,
     SafeContractFactory,
     SafeMasterCopyFactory,
 )
@@ -258,6 +259,35 @@ class TestCommands(TestCase):
                         current_block_number_mock.return_value,
                     )
                     self.assertEqual(find_relevant_elements_mock.call_count, 2)
+
+            # When reindexing an L2 indexer with explicit --addresses, the
+            # ProxyFactory addresses must also be appended so ProxyCreation
+            # events (emitted by the factory, not by the Safe) still match
+            # the getLogs filter. Without this, the setup InternalTx.to is
+            # left as NULL_ADDRESS and downstream safe_tx_hash computation
+            # breaks. See iotexproject/iotex-transaction-service#10.
+            IndexServiceProvider.del_singleton()
+            proxy_factory = ProxyFactoryFactory()
+            with self.assertLogs(logger_name, level="INFO") as cm:
+                with mock.patch.object(
+                    SafeEventsIndexer, "find_relevant_elements", return_value=[]
+                ) as find_relevant_elements_mock:
+                    target_safe_address = SafeContractFactory().address
+                    from_block_number = 300
+                    block_process_limit = 500
+                    call_command(
+                        command,
+                        f"--block-process-limit={block_process_limit}",
+                        f"--from-block-number={from_block_number}",
+                        f"--addresses={target_safe_address}",
+                        stdout=StringIO(),
+                    )
+                    expected_addresses = [target_safe_address, proxy_factory.address]
+                    find_relevant_elements_mock.assert_any_call(
+                        expected_addresses,
+                        from_block_number,
+                        from_block_number + block_process_limit - 1,
+                    )
         IndexServiceProvider.del_singleton()
 
     @mock.patch.object(

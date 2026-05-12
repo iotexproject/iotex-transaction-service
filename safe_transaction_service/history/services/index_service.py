@@ -17,12 +17,40 @@ from ..models import (
     ModuleTransaction,
     MultisigConfirmation,
     MultisigTransaction,
+    ProxyFactory,
     SafeLastStatus,
     SafeMasterCopy,
     SafeStatus,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _is_unrelated_proxy_creation(
+    indexer,
+    log_receipt,
+    requested_addresses: set,
+) -> bool:
+    """Return True if `log_receipt` is a ProxyCreation event whose `proxy` arg
+    is NOT in `requested_addresses`.
+
+    Used by `_reindex` when targeting `SafeEventsIndexer` with `--addresses`:
+    we append the proxy factory addresses to the eth_getLogs filter so the
+    setup→singleton cross-link can fire (see issue #10), but that filter also
+    returns ProxyCreation events for any other Safe the factory created in
+    the same block range. Drop those so `--addresses` keeps its explicit
+    scope and doesn't silently mutate state for unrelated Safes.
+    """
+    try:
+        decoded = indexer.decode_element(log_receipt)
+    except Exception:
+        return False
+    if not decoded or decoded.get("event") != "ProxyCreation":
+        return False
+    proxy = decoded.get("args", {}).get("proxy")
+    if not proxy:
+        return False
+    return proxy.lower() not in requested_addresses
 
 
 @dataclass
@@ -388,6 +416,31 @@ class IndexService:
             # Just process addresses provided
             # No issues on modifying the indexer as we should be provided with a new instance
             indexer.IGNORE_ADDRESSES_ON_LOG_FILTER = False
+            # L2 indexers (SafeEventsIndexer) rely on ProxyCreation events emitted
+            # by the proxy factory to populate setup InternalTx.to with the master copy
+            # (see SafeEventsIndexer._process_decoded_element's ProxyCreation branch).
+            # The factory emits at its own address, not the Safe's, so when callers
+            # narrow `addresses` to just Safe addresses the cross-emitter pickup
+            # is dropped and setup rows end up with to=NULL_ADDRESS, breaking
+            # downstream safe_tx_hash computation. Append factory addresses so the
+            # filter still includes them.
+            # See iotexproject/iotex-transaction-service#10.
+            from ..indexers.safe_events_indexer import SafeEventsIndexer
+
+            requested_addresses: Optional[set] = None
+            if isinstance(indexer, SafeEventsIndexer):
+                factory_addresses = list(
+                    ProxyFactory.objects.values_list("address", flat=True)
+                )
+                if factory_addresses:
+                    # Remember the originally-requested Safes so we can drop
+                    # ProxyCreation events from the factory that target other,
+                    # unrelated Safes created in the same block range. Without
+                    # this filter, `--addresses` would silently broaden into
+                    # "also discover and index every Safe the factory created
+                    # in this window", surprising the caller.
+                    requested_addresses = {a.lower() for a in addresses}
+                    addresses = list(addresses) + factory_addresses
         else:
             addresses = list(
                 indexer.database_queryset.values_list("address", flat=True)
@@ -416,6 +469,14 @@ class IndexService:
                     block_number,
                     min(block_number + block_process_limit - 1, stop_block_number),
                 )
+                if requested_addresses is not None:
+                    elements = [
+                        log
+                        for log in elements
+                        if not _is_unrelated_proxy_creation(
+                            indexer, log, requested_addresses
+                        )
+                    ]
                 indexer.process_elements(elements)
                 logger.info(
                     "Current block number %d, found %d traces/events",

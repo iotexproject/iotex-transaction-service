@@ -51,6 +51,11 @@ jobs:
         with:
           images: |
             ${{ env.REGISTRY }}/${{ env.REPOSITORY_URI_WEB }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha,prefix=sha-,format=short
 
 
       - name: Build and push Docker image web
@@ -69,6 +74,11 @@ jobs:
         with:
           images: |
             ${{ env.REGISTRY }}/${{ env.REPOSITORY_URI_NGINX }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha,prefix=sha-,format=short
       - name: Build and push Docker image nginx
         id: build-and-push-nginx
         uses: docker/build-push-action@v4

@@ -39,6 +39,24 @@ SECURE_CONTENT_TYPE_NOSNIFF = env.bool(
 # https://docs.djangoproject.com/en/3.2/ref/settings/#csrf-trusted-origins
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
+# Session/CSRF cookies were being issued without the Secure attribute, so a
+# browser would happily replay an admin session over plaintext. The deployment
+# is HTTPS-only (Cloudflare terminates TLS, the origin only accepts Cloudflare
+# IPs), so this is purely Django not being told.
+# https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-secure
+SESSION_COOKIE_SECURE = env.bool("DJANGO_SESSION_COOKIE_SECURE", default=True)
+CSRF_COOKIE_SECURE = env.bool("DJANGO_CSRF_COOKIE_SECURE", default=True)
+SESSION_COOKIE_HTTPONLY = env.bool("DJANGO_SESSION_COOKIE_HTTPONLY", default=True)
+
+# TLS is terminated upstream, so request.is_secure() is False without this and
+# Django treats every request as plaintext — which is also what makes the
+# scheme-qualified entries in CSRF_TRUSTED_ORIGINS unreliable on the admin
+# login POST. Trusting the header is safe only because the proxy sets it on
+# every request; keep the escape hatch for anyone running this without one.
+# https://docs.djangoproject.com/en/dev/ref/settings/#secure-proxy-ssl-header
+if env.bool("DJANGO_USE_X_FORWARDED_PROTO", default=True):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # SSO (tested with https://github.com/buzzfeed/sso)
 # ------------------------------------------------------------------------------
 # Be really careful when enabling SSO. If the `SSO_USERNAME_HEADER` can be spoofed

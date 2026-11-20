@@ -1,4 +1,4 @@
-boto3==1.26.151
+boto3==1.44.7
 cachetools==5.3.1
 celery==5.2.7
 django==4.2.30
@@ -16,10 +16,10 @@ django-model-utils==4.3.1
 django-redis==5.2.0
 django-s3-storage==0.14.0
 django-timezone-field==5.1
-djangorestframework==3.15.2
+djangorestframework==3.17.2
 djangorestframework-camel-case==1.4.2
 docutils==0.20.1
-drf-yasg[validation]==1.21.5
+drf-yasg[validation]==1.21.18
 firebase-admin==6.2.0
 flower==1.2.0
 gunicorn[gevent]==23.0.0
@@ -27,11 +27,23 @@ hexbytes==0.2.3
 hiredis==2.2.3
 packaging>=21.0
 pika==1.3.2
-pillow==11.3.0
+pillow==12.3.0
 psycogreen==1.0.2
 psycopg2==2.9.6
 redis==4.5.5
-requests==2.32.4
-safe-eth-py[django] @ git+https://github.com/iotexproject/safe-eth-py.git@iotex
+requests==2.33.0
+safe-eth-py[django] @ git+https://github.com/iotexproject/safe-eth-py.git@36e2d346016f5fb6993a28e5ab9920bb93b4196d  # iotex branch, pinned
 #safe-eth-py[django]==5.5.0
 web3==6.5.0
+
+# Security pins for transitive dependencies (2026-11). Each is a
+# release that fixes the open advisories and still installs on Python 3.10.
+aiohttp==3.14.5
+certifi==2026.10.23
+sqlparse==0.6.1
+urllib3==2.8.0
+cryptography==50.0.2
+msgpack==1.2.4
+multidict==6.9.1
+pyasn1==0.6.5
+PyJWT==2.15.1
